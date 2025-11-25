@@ -177,23 +177,32 @@ def main():
 
     print("Gerados:", out_cpf, out_name, out_un)
 
-    # Atualizar historico: uniremos os consultores do mês ao historico evitando duplicatas por CPF ou nome
+ # Atualizar historico: uniremos os consultores do mês ao historico evitando duplicatas
     df_new = df_cons.copy()
-    # Colunas mínimas para histórico: Nome, CPF, Amostra, data_import
+
     if "data_import" not in df_new.columns:
         df_new["data_import"] = datetime.utcnow().isoformat()
-    hist_cols = ["__NOME", "__CPF", "__AMOSTRA", "data_import"]
-    hist_df = df_new[hist_cols].rename(columns={"__NOME":"Nome", "__CPF":"CPF","__AMOSTRA":"Amostra"})
 
-    if HIST.exists():
+    hist_cols = ["__NOME", "__CPF", "__AMOSTRA", "data_import"]
+    hist_df = df_new[hist_cols].rename(columns={
+        "__NOME": "Nome",
+        "__CPF": "CPF",
+        "__AMOSTRA": "Amostra"
+    })
+
+    # Se o arquivo existir mas estiver vazio, cria um histórico vazio corretamente formatado
+    if HIST.exists() and os.path.getsize(HIST) > 0:
         df_hist = pd.read_csv(HIST)
-        df_comb = pd.concat([df_hist, hist_df], ignore_index=True)
-        # remover duplicatas por CPF (mantendo o mais recente) ou Nome se CPF vazio
-        df_comb = df_comb.sort_values("data_import").drop_duplicates(subset=["CPF"], keep="last")
-        # também garantir nomes únicos quando CPF vazio
-        df_comb = df_comb.sort_values("data_import").drop_duplicates(subset=["Nome"], keep="last")
     else:
-        df_comb = hist_df
+        df_hist = pd.DataFrame(columns=["Nome", "CPF", "Amostra", "data_import"])
+
+    df_comb = pd.concat([df_hist, hist_df], ignore_index=True)
+
+    # remover duplicatas por CPF (mantendo o mais recente)
+    df_comb = df_comb.sort_values("data_import").drop_duplicates(subset=["CPF"], keep="last")
+
+    # garantir nomes únicos quando CPF estiver vazio
+    df_comb = df_comb.sort_values("data_import").drop_duplicates(subset=["Nome"], keep="last")
 
     df_comb.to_csv(HIST, index=False)
     print("Histórico atualizado em", HIST)
