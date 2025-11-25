@@ -104,6 +104,10 @@ def main():
     df_cad["__NOME"] = df_cad[nome_col_cad].map(norm_name)
 
     # Map CPF exato
+    # Remove linhas com CPF duplicado, mantendo somente a última
+    df_cad = df_cad.drop_duplicates(subset="__CPF", keep="last")
+
+    # Agora cria o dict normalmente
     cad_by_cpf = df_cad.set_index("__CPF").to_dict('index')
 
     matched_by_cpf = []
