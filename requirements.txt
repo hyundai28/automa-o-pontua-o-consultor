@@ -2,3 +2,4 @@ pandas
 openpyxl
 rapidfuzz
 unidecode
+xlrd==2.0.1
