@@ -39,7 +39,7 @@ df_pont["Concessionária"] = df_pont["Concessionária"].astype(str).str.upper()
 pontuacao_por_cpf = pd.Series(df_pont["Amostra"].values, index=df_pont["CPF_clean"]).to_dict()
 hgsi_por_cpf = pd.Series(df_pont["HGSI"].values, index=df_pont["CPF_clean"]).to_dict()
 
-df_pont["Chave"] = df_pont["Nome_clean"] + " | " + df_pont["Concessionaria"]
+df_pont["Chave"] = df_pont["Nome_clean"] + " | " + df_pont["Concessionária"]
 pontuacao_por_chave = pd.Series(df_pont["Amostra"].values, index=df_pont["Chave"]).to_dict()
 hgsi_por_chave = pd.Series(df_pont["HGSI"].values, index=df_pont["Chave"]).to_dict()
 
@@ -48,7 +48,7 @@ resultados = []
 for _, row in df_cad.iterrows():
     cpf = row["CPF_clean"]
     nome = row["Nome_clean"]
-    conc = row["Concessionaria"]
+    conc = row["Concessionária"]
     chave = f"{nome} | {conc}"
 
     amostra = 0
