@@ -225,7 +225,7 @@ def main():
         df_hist_new = pd.DataFrame({
             "Dealer": df_cons[dealerName_col],  # Nome original da planilha (que era a concessionária)
             "Nome Consultor": df_cons[nome_col_cons],  # Mesmo nome; ajustar se vier outra coluna no futuro
-            "CPF": df_cons["__CPF"],
+            "CPF": df_cad["CPF"],
             "Amostra": df_cons["__AMOSTRA"],
             "data_import": datetime.utcnow().isoformat()
         })
