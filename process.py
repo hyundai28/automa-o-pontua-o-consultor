@@ -242,21 +242,17 @@ def main():
                     matched_source = "NOME_FUZZY_100"
 
             # Construir saída
-              if matched and matched_row is not None:
-                    # garantir que matched_row é sempre uma Series
-                    if isinstance(matched_row, dict):
-                        matched_row = pd.Series(matched_row)
-                
-                    # pegar CPF oficial do cadastro (sempre)
-                    cpf_oficial = cpf_cad if cpf_cad else ""
-                
-                    # pegar nome apontado no cadastro (mantemos)
-                    nome_oficial = nome_cad
-                
-                    # tentar obter pontuação da planilha de consultores
-                    pont_cols = [c for c in matched_row.index if re.search(r"pontu|ponto|score|pontuação|pontos", str(c).lower())]
-
-                pontos_val = None
+               if matched and matched_row is not None:
+                  # garantir que matched_row é sempre uma Series
+                  if isinstance(matched_row, dict):
+                     matched_row = pd.Series(matched_row)
+                     # pegar CPF oficial do cadastro (sempre)
+                  cpf_oficial = cpf_cad if cpf_cad else ""
+                     # pegar nome apontado no cadastro (mantemos)
+                  nome_oficial = nome_cad
+                   # tentar obter pontuação da planilha de consultores
+                  pont_cols = [c for c in matched_row.index if re.search(r"pontu|ponto|score|pontuação|pontos", str(c).lower())]
+                  pontos_val = None
                 if pont_cols:
                     # pegar a primeira coluna que pareça ser pontuação
                     pontos_val = matched_row[pont_cols[0]]
