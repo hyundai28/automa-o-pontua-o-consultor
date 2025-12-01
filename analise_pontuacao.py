@@ -42,7 +42,7 @@ df_pont["CPF_clean"] = df_pont["CPF"].apply(clean_cpf)
 df_pont["Nome_clean"] = df_pont["Nome"].apply(normalize_name)
 df_pont["Concessionaria_clean"] = df_pont["Concessionária"].astype(str).str.upper()
 
-# AQUI A MÁGICA: acha a coluna Q.1.4 de qualquer jeito
+# PROCURA A COLUNA Q.1.4 DE QUALQUER JEITO
 nota_col = None
 for col in df_pont.columns:
     if str(col).strip().startswith("Q.1.4"):
@@ -53,10 +53,9 @@ for col in df_pont.columns:
 if nota_col is None:
     print("ERRO: Não encontrou nenhuma coluna que começa com 'Q.1.4'")
     print("Colunas disponíveis:", list(df_pont.columns))
-    exit())
     exit()
 
-# Índices com prioridade CPF → Nome+Loja → Nome
+# Índices com prioridade
 amostra_por_cpf = pd.Series(df_pont["Amostra"].values, index=df_pont["CPF_clean"]).to_dict()
 nota_por_cpf    = pd.Series(df_pont[nota_col].values, index=df_pont["CPF_clean"]).to_dict()
 
@@ -88,7 +87,7 @@ for _, row in df_cad.iterrows():
             amostra = melhor["Amostra"]
             nota_recomendacao = melhor[nota_col]
 
-    amostra_int = int(amostra if pd.notna(amostra) else 0
+    amostra_int = int(amostra) if pd.notna(amostra) else 0
     try:
         amostra_int = int(amostra_int)
     except:
