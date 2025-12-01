@@ -1,42 +1,48 @@
-name: Processar planilhas mensal
+name: Análise de Pontuação Consultores
 
 on:
-  push:
-    paths:
-      - 'inputs/**'
+  workflow_dispatch:
+    inputs:
+      planilha_cadastros:
+        description: 'Planilha de CADASTROS (todos os consultores do site)'
+        required: true
+        type: string
+      planilha_pontuacao:
+        description: 'Planilha de PONTUAÇÃO do mês (quem pontuou)'
+        required: true
+        type: string
 
 jobs:
-  process:
+  analisar:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          persist-credentials: true  # permite push com GITHUB_TOKEN
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install deps
+      - name: Instalar dependências
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install pandas openpyxl rapidfuzz unidecode
 
-      - name: Run processor
+      - name: Baixar planilhas
         run: |
-          python process.py
+          mkdir -p inputs/cadastros inputs/pontuacao outputs
+          gh run download ${{ github.run_id }} -n ${{ inputs.planilha_cadastros }} -D inputs/cadastros
+          gh run download ${{ github.run_id }} -n ${{ inputs.planilha_pontuacao }} -D inputs/pontuacao
+        env:
+          GH_TOKEN: ${{ github.token }}
 
-      - name: Commit outputs
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add outputs/ historico/ || true
-          # só commita se houver mudanças
-          if ! git diff --staged --quiet; then
-            git commit -m "Automação: resultados processados e histórico atualizado [ci skip]" || true
-            git push origin HEAD
-          else
-            echo "Sem mudanças para commitar"
-          fi
+      - name: Executar análise
+        id: analise
+        run: python analise_pontuacao.py
+
+      - name: Upload resultado
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultado-pontuacao
+          path: outputs/resultado_*.csv
