@@ -134,6 +134,7 @@ def main():
         df_cons = read_maybe_excel(cons_file)
         df_cad = read_maybe_excel(cad_file)
 
+        # Identificar colunas principais
         cpf_col_cons = find_col(df_cons, ["CPF"])
         nome_col_cons = find_col(df_cons, ["Nome", "Nome Consultor", "Consultor", "NOME"])
         amostra_col_cons = find_col(df_cons, ["Amostra", "AMOSTRA"])
@@ -150,11 +151,14 @@ def main():
         if not nome_col_cons:
             print("Aviso: não foi encontrada coluna de Nome na planilha de consultores. Prosseguindo com CPF apenas.")
 
+        # Normalizar cadastros (base)
         df_cad["__CPF"] = df_cad[cpf_col_cad].map(clean_cpf)
         df_cad["__NOME_CAD"] = df_cad[nome_col_cad].map(norm_name)
 
+        # Remover duplicados por CPF no cadastro (keep last)
         df_cad = df_cad.sort_index().drop_duplicates(subset="__CPF", keep="last")
 
+        # Normalizar consultores (onde estão as pontuações)
         if cpf_col_cons:
             df_cons["__CPF"] = df_cons[cpf_col_cons].map(clean_cpf)
         else:
@@ -170,6 +174,7 @@ def main():
         else:
             df_cons["__AMOSTRA"] = 1
 
+        # Mapas auxiliares para lookup
         cons_by_cpf = {r["__CPF"]: r for _, r in df_cons.iterrows() if r["__CPF"]}
 
         cons_by_name = {}
@@ -178,11 +183,15 @@ def main():
             if name:
                 cons_by_name[name] = r
 
-        results = []
+        # Preparar resultados: vamos iterar sobre CADASTROS (base)
+        results_by_idx = {}  # chave = índice do df_cad (garante 1 linha por cadastro)
         cad_names = df_cons["__NOME_CONS"].tolist()
         cad_rows_list = df_cons.to_dict("records")
 
-        for _, cad in df_cad.iterrows():
+        total_cad = len(df_cad)
+        print(f"Total registros no cadastro (linhas em df_cad): {total_cad}")
+
+        for idx, cad in df_cad.iterrows():
             cpf_cad = cad["__CPF"]
             nome_cad = cad["__NOME_CAD"]
 
@@ -190,17 +199,20 @@ def main():
             matched_source = None
             matched_row = None
 
+            # 1) CPF exato nas pontuações
             if cpf_cad and cpf_cad in cons_by_cpf:
                 matched_row = cons_by_cpf[cpf_cad]
                 matched = True
                 matched_source = "CPF_EXATO"
 
+            # 2) Nome exato
             if not matched and nome_cad:
                 if nome_cad in cons_by_name:
                     matched_row = cons_by_name[nome_cad]
                     matched = True
                     matched_source = "NOME_EXATO"
 
+            # 3) Fuzzy 100%
             if not matched and nome_cad and cad_names:
                 best_score = -1
                 best_idx = None
@@ -214,24 +226,28 @@ def main():
                     matched = True
                     matched_source = "NOME_FUZZY_100"
 
+            # Garantir tipo Series para matched_row
+            if matched and matched_row is not None and isinstance(matched_row, dict):
+                matched_row = pd.Series(matched_row)
+
+            # Construir saída (sempre 1 por idx)
             if matched and matched_row is not None:
-
-                if isinstance(matched_row, dict):
-                    matched_row = pd.Series(matched_row)
-
                 cpf_oficial = cpf_cad if cpf_cad else ""
                 nome_oficial = nome_cad
 
-                pont_cols = [
-                    c for c in matched_row.index
-                    if re.search(r"pontu|ponto|score|pontuação|pontos", str(c).lower())
-                ]
+                # detectar coluna de pontuação heurística
+                pont_cols = []
+                if isinstance(matched_row, (pd.Series, pd.DataFrame)):
+                    pont_cols = [c for c in matched_row.index if re.search(r"pontu|ponto|score|pontuação|pontos", str(c).lower())]
 
                 pontos_val = None
                 if pont_cols:
-                    pontos_val = matched_row[pont_cols[0]]
+                    try:
+                        pontos_val = matched_row[pont_cols[0]]
+                    except Exception:
+                        pontos_val = None
                 else:
-                    if "PONTUACAO" in matched_row:
+                    if isinstance(matched_row, (pd.Series, pd.DataFrame)) and "PONTUACAO" in matched_row:
                         pontos_val = matched_row["PONTUACAO"]
 
                 try:
@@ -239,7 +255,9 @@ def main():
                 except Exception:
                     pontos_val = 0.0
 
-                amostra_val = matched_row.get("__AMOSTRA", None)
+                amostra_val = None
+                if isinstance(matched_row, (pd.Series, pd.DataFrame)):
+                    amostra_val = matched_row.get("__AMOSTRA", None)
                 if amostra_val is None or (isinstance(amostra_val, float) and pd.isna(amostra_val)):
                     amostra_val = cad.get("__AMOSTRA", 1)
 
@@ -251,10 +269,10 @@ def main():
                     "PONTUACAO": pontos_val,
                     "_match_type": matched_source
                 }
-
-                results.append(out_record)
+                results_by_idx[idx] = out_record
 
             else:
+                # cadastrado mas não pontuou -> inserir com 0
                 out_record = {
                     "Dealer": cad.get(dealer_col_cons, ""),
                     "Nome Consultor": cad.get(nome_col_cad, nome_cad),
@@ -263,15 +281,29 @@ def main():
                     "PONTUACAO": 0.0,
                     "_match_type": "CADASTRADO_NAO_PONTUOU"
                 }
+                results_by_idx[idx] = out_record
 
-                results.append(out_record)
+        # Converter para DataFrame (garante 1 linha por cadastro)
+        df_results = pd.DataFrame(list(results_by_idx.values()))
 
+        # Debug / checagens
+        total_results = len(df_results)
+        unique_cpfs = df_results["CPF"].nunique(dropna=True)
+        dup_mask = df_results.duplicated(subset=["CPF"], keep=False)
+        dup_count = int(dup_mask.sum())  # número de linhas que aparecem duplicadas por CPF
+
+        print(f"Total registros gerados (df_results): {total_results}")
+        print(f"Total CPFs únicos em df_results: {unique_cpfs}")
+        print(f"Linhas com CPF duplicado (se >0, mostraremos exemplos): {dup_count}")
+        if dup_count > 0:
+            print(df_results[dup_mask].head(10).to_string(index=False))
+
+        # SALVAR OUTPUTS
         timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
-        df_results = pd.DataFrame(results)
-
         df_results.to_csv(OUTPUTS / f"cadastrados_{timestamp}.csv", index=False)
         print("Arquivo gerado:", OUTPUTS / f"cadastrados_{timestamp}.csv")
 
+        # Consultores que não existem no cadastro (auditoria)
         consultores_sem_cad = []
         cad_cpfs = set(df_cad["__CPF"].tolist())
         cad_nomes = set(df_cad["__NOME_CAD"].tolist())
@@ -293,7 +325,9 @@ def main():
             OUTPUTS / f"nao_cadastrados_{timestamp}.csv",
             index=False
         )
+        print("Arquivo de não cadastrados gerado (auditoria):", OUTPUTS / f"nao_cadastrados_{timestamp}.csv")
 
+        # HISTÓRICO (somente CADASTROS — todos cadastros, mesmo que 0 pontos)
         df_hist_old = load_history_safe(HIST)
 
         df_hist_new = pd.DataFrame({
