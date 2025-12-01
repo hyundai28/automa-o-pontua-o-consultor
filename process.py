@@ -129,12 +129,14 @@ def main():
             nome = row["__NOME_CONSULTOR"]
 
             # MATCH POR CPF
-            if cpf and cpf in cad_by_cpf:
-                out = row.to_dict()
-                out["_match_type"] = "CPF_EXATO"
-                out["_matched_name"] = cad_by_cpf[cpf]["__NOME"]
-                matched.append(out)
-                continue
+          if cpf and cpf in cad_by_cpf:
+            cad_row = cad_by_cpf[cpf]
+            out = row.to_dict()
+            out["_match_type"] = "CPF_EXATO"
+            out["_matched_name"] = cad_row["__NOME"]
+            out["__CPF_CADASTRO"] = cad_row["__CPF"]   # << NOVO
+            matched.append(out)
+            continue
 
             # MATCH POR NOME 100%
             best_score = -1
@@ -145,11 +147,12 @@ def main():
                     best_score = score
                     best_idx = i
 
-            if best_score == 100:
+           if best_score == 100:
                 cad_row = cad_rows[best_idx]
                 out = row.to_dict()
                 out["_match_type"] = "NOME_FUZZY_100"
                 out["_matched_name"] = cad_row["__NOME"]
+                out["__CPF_CADASTRO"] = cad_row["__CPF"]   # << NOVO
                 matched.append(out)
             else:
                 row["_match_type"] = "NAO_CADASTRADO"
@@ -171,11 +174,11 @@ def main():
         # HISTÓRICO
         # -------------------------
         df_hist_existing = load_history_safe(HIST)
-        df_hist_new = pd.DataFrame({
-            "Dealer": df_cons[dealer_col],
-            "Nome Consultor": df_cons[nome_col_cons],
-            "CPF": df_cons["__CPF"],
-            "Amostra": df_cons["__AMOSTRA"],
+             df_hist_new = pd.DataFrame({
+            "Dealer": df_matched[dealer_col],
+            "Nome Consultor": df_matched[nome_col_cons],
+            "CPF": df_matched["__CPF_CADASTRO"],
+            "Amostra": df_matched["__AMOSTRA"],
             "data_import": datetime.utcnow().isoformat()
         })
 
