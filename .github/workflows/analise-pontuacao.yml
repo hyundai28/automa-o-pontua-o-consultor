@@ -1,14 +1,14 @@
-name: Análise de Pontuação Consultores
+name: 🎯 Análise de Pontuação - Consultores
 
 on:
   workflow_dispatch:
     inputs:
       planilha_cadastros:
-        description: 'Planilha com TODOS os cadastros do site'
+        description: '📋 Planilha de CADASTROS (todos os consultores do site)'
         required: true
         type: attachment
       planilha_pontuacao:
-        description: 'Planilha com a pontuação do mês (quem pontuou)'
+        description: '🏆 Planilha de PONTUAÇÃO do mês (quem pontuou)'
         required: true
         type: attachment
 
@@ -16,41 +16,59 @@ jobs:
   analisar:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout do repositório
+      - name: 📂 Checkout
         uses: actions/checkout@v4
 
-      - name: Configurar Python
+      - name: 🐍 Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Instalar dependências
+      - name: 📦 Instalar dependências
         run: |
           python -m pip install --upgrade pip
           pip install pandas openpyxl rapidfuzz unidecode
 
-      - name: Copiar planilhas enviadas
+      - name: 📥 Preparar planilhas
         run: |
-          mkdir -p inputs/cadastros inputs/pontuacao outputs
+          mkdir -p inputs/{cadastros,pontuacao,outputs}
+          
+          # Copia os arquivos do attachment para as pastas
           cp "${{ inputs.planilha_cadastros }}" inputs/cadastros/
           cp "${{ inputs.planilha_pontuacao }}" inputs/pontuacao/
-          echo "Arquivos copiados com sucesso:"
+          
+          echo "📁 Arquivos preparados:"
+          echo "Cadastros:"
           ls -la inputs/cadastros/
+          echo "Pontuação:"
           ls -la inputs/pontuacao/
 
-      - name: Executar análise
-        run: python analise_pontuacao.py
+      - name: 🔍 Executar análise de pontuação
+        run: |
+          echo "🚀 Iniciando análise..."
+          python analise_pontuacao.py
+          
+          echo "📊 Resumo dos resultados:"
+          if [ -f outputs/resultado_*.xlsx ]; then
+            ls -la outputs/
+          else
+            echo "❌ Nenhum arquivo de resultado encontrado!"
+            exit 1
+          fi
 
-      - name: Upload do resultado
+      - name: 📤 Upload resultado final
         uses: actions/upload-artifact@v4
         with:
-          name: Resultado - Pontuação Consultores
-          path: outputs/resultado_pontuacao_*.xlsx
+          name: 🎯-resultado-pontuacao-${{ github.run_number }}
+          path: outputs/resultado_*.xlsx
+          retention-days: 30
 
-      - name: Resumo final (para ficar bonito no log)
+      - name: 📊 Estatísticas finais
+        if: always()
         run: |
-          echo "✅ Análise concluída com sucesso!"
-          echo "📊 Total de consultores cadastrados: $(cat outputs/last_summary.txt | grep 'Total' | cut -d: -f2)"
-          echo "🏆 Pontuaram: $(cat outputs/last_summary.txt | grep 'Pontuaram' | cut -d: -f2)"
-          echo "❌ Não pontuaram: $(cat outputs/last_summary.txt | grep 'Não pontuaram' | cut -d: -f2)"
-          echo "📎 Baixe o arquivo Excel logo acima em 'Artifacts' ↓"
+          if [ -f outputs/resultado_*.xlsx ]; then
+            echo "✅ Análise concluída com sucesso!"
+            echo "📥 Baixe o arquivo de resultados no painel de Artifacts"
+          else
+            echo "❌ Análise falhou - verifique os logs acima"
+          fi
