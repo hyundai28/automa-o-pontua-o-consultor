@@ -26,12 +26,11 @@ df_pont = pd.read_excel(PONT_FILE)
 print(f"Cadastros bruto: {len(df_cad)} linhas")
 print(f"Pontuação: {len(df_pont)} linhas")
 
-# FILTRA só quem tem "Cadastro Concluído"
+# FILTRA só "Cadastro Concluído"
 df_cad = df_cad[df_cad["Status"].str.strip() == "Cadastro Concluído"].copy()
 print(f"Após filtro 'Cadastro Concluído': {len(df_cad)} linhas")
-
 if df_cad.empty:
-    print("Nenhum consultor com status 'Cadastro Concluído'. Parando.")
+    print("Nenhum consultor ativo encontrado.")
     exit()
 
 # Normalização
@@ -43,10 +42,21 @@ df_pont["CPF_clean"] = df_pont["CPF"].apply(clean_cpf)
 df_pont["Nome_clean"] = df_pont["Nome"].apply(normalize_name)
 df_pont["Concessionaria_clean"] = df_pont["Concessionária"].astype(str).str.upper()
 
-# Coluna exata que você quer: Q.1.4\nRecomendação\nConsultor
-nota_col = "Q.1.4 RecomendaçãoConsultor"
+# AQUI A MÁGICA: acha a coluna Q.1.4 de qualquer jeito
+nota_col = None
+for col in df_pont.columns:
+    if str(col).strip().startswith("Q.1.4"):
+        nota_col = col
+        print(f"Coluna encontrada: '{col}' → será usada como 'Nota Recomendação Consultor'")
+        break
 
-# Índices de busca (prioridade CPF → Nome + Loja → Nome)
+if nota_col is None:
+    print("ERRO: Não encontrou nenhuma coluna que começa com 'Q.1.4'")
+    print("Colunas disponíveis:", list(df_pont.columns))
+    exit())
+    exit()
+
+# Índices com prioridade CPF → Nome+Loja → Nome
 amostra_por_cpf = pd.Series(df_pont["Amostra"].values, index=df_pont["CPF_clean"]).to_dict()
 nota_por_cpf    = pd.Series(df_pont[nota_col].values, index=df_pont["CPF_clean"]).to_dict()
 
@@ -65,17 +75,12 @@ for _, row in df_cad.iterrows():
     amostra = 0
     nota_recomendacao = None
 
-    # <--- a nota que você quer
-
-    # 1. CPF
     if cpf and cpf in amostra_por_cpf:
         amostra = amostra_por_cpf[cpf]
-        nota_recomendacao = nota_por_cpf.get(cpf, None)
-    # 2. Nome + Concessionária
+        nota_recomendacao = nota_por_cpf.get(cpf)
     elif chave in amostra_por_chave:
         amostra = amostra_por_chave[chave]
-        nota_recomendacao = nota_por_chave.get(chave, None)
-    # 3. Só nome (último recurso)
+        nota_recomendacao = nota_por_chave.get(chave)
     elif nome in df_pont["Nome_clean"].values:
         candidatos = df_pont[df_pont["Nome_clean"] == nome]
         if not candidatos.empty:
@@ -83,13 +88,12 @@ for _, row in df_cad.iterrows():
             amostra = melhor["Amostra"]
             nota_recomendacao = melhor[nota_col]
 
-    # Converte Amostra para int
+    amostra_int = int(amostra if pd.notna(amostra) else 0
     try:
-        amostra_int = int(amostra) if pd.notna(amostra) else 0
+        amostra_int = int(amostra_int)
     except:
         amostra_int = 0
 
-    # Converte nota para float com 2 casas (ou deixa vazio se não tiver)
     try:
         nota_final = round(float(nota_recomendacao), 2) if pd.notna(nota_recomendacao) else None
     except:
@@ -107,21 +111,13 @@ for _, row in df_cad.iterrows():
 
 df_final = pd.DataFrame(resultados)
 
-# Salva
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 arquivo = OUTPUT_DIR / f"RESULTADO_FINAL_{timestamp}.xlsx"
 
 with pd.ExcelWriter(arquivo, engine="openpyxl") as writer:
     df_final.to_excel(writer, sheet_name="Resultado", index=False)
-    
     resumo = pd.DataFrame({
-        "Indicador": [
-            "Total (Cadastro Concluído)",
-            "Pontuaram no mês",
-            "Não pontuaram",
-            "% que pontuaram",
-            "Média Nota Recomendação Consultor"
-        ],
+        "Indicador": ["Total ativos", "Pontuaram", "Não pontuaram", "% pontuaram", "Média Nota Q.1.4"],
         "Valor": [
             len(df_final),
             (df_final["Amostra"] > 0).sum(),
@@ -132,6 +128,5 @@ with pd.ExcelWriter(arquivo, engine="openpyxl") as writer:
     })
     resumo.to_excel(writer, sheet_name="Resumo", index=False)
 
-print(f"\nPRONTO, CARALHO! Arquivo gerado: {arquivo}")
-print(f"Total analisado: {len(df_final)} → {(df_final['Amostra']>0).sum()} pontuaram")
-print(f"Média da pergunta Q.1.4 (Recomendação Consultor): {df_final['Nota Recomendação Consultor'].mean():.2f}")
+print(f"\nSUCESSO TOTAL! Arquivo: {arquivo}")
+print(f"Total: {len(df_final)} → {(df_final['Amostra']>0).sum()} pontuaram")
