@@ -1,11 +1,31 @@
 import pandas as pd
+import glob
 from rapidfuzz import fuzz, process
 
 # ---------------------------
-# 1. Carregar arquivos
+# 1. Localizar arquivos automaticamente
 # ---------------------------
-cadastros = pd.read_excel("cadastros.xlsx")
-consultores = pd.read_excel("consultores.xlsx")
+
+# Procura qualquer arquivo que termine com "-cadastros.xlsx"
+cadastros_files = glob.glob("*-cadastros.xlsx")
+consultores_files = glob.glob("*-consultores.xlsx")
+
+if not cadastros_files:
+    raise FileNotFoundError("Nenhum arquivo *-cadastros.xlsx encontrado!")
+if not consultores_files:
+    raise FileNotFoundError("Nenhum arquivo *-consultores.xlsx encontrado!")
+
+cadastros_file = cadastros_files[0]
+consultores_file = consultores_files[0]
+
+print("Arquivo de cadastros encontrado:", cadastros_file)
+print("Arquivo de consultores encontrado:", consultores_file)
+
+# ---------------------------
+# 2. Carregar arquivos
+# ---------------------------
+cadastros = pd.read_excel(cadastros_file)
+consultores = pd.read_excel(consultores_file)
 
 # Padronização
 cadastros['CPF'] = cadastros['CPF'].astype(str).str.replace(r'\D', '', regex=True)
@@ -15,10 +35,8 @@ cadastros['NOME'] = cadastros['NOME'].astype(str).str.upper().str.strip()
 consultores['NOME'] = consultores['NOME'].astype(str).str.upper().str.strip()
 
 # ---------------------------
-# 2. Mapeamento de CPF exato
+# 3. Merge direto pelo CPF
 # ---------------------------
-
-# Merge EXATO pelo CPF
 merge_cpf = pd.merge(
     cadastros,
     consultores,
@@ -28,13 +46,16 @@ merge_cpf = pd.merge(
 )
 
 # ---------------------------
-# 3. Fuzzy match somente 100%
+# 4. Fuzzy match 100%
 # ---------------------------
 def fuzzy_match(row):
     nome = row["NOME"]
-    if pd.notna(row["NOME_con"]):  
-        return row["NOME_con"]  
+    
+    # Já encontrou pelo CPF?
+    if pd.notna(row["NOME_con"]):
+        return row["NOME_con"]
 
+    # Fuzzy com exigência 100%
     result = process.extractOne(
         nome,
         consultores["NOME"],
@@ -43,14 +64,12 @@ def fuzzy_match(row):
 
     if result and result[1] == 100:
         return result[0]
-    else:
-        return None  
-
+    return None
 
 merge_cpf["NOME_MATCH"] = merge_cpf.apply(fuzzy_match, axis=1)
 
 # ---------------------------
-# 4. Resgatar pontuação do consultor encontrado
+# 5. Recuperar pontuação
 # ---------------------------
 consultores_dict = consultores.set_index("NOME").to_dict(orient="index")
 
@@ -58,20 +77,17 @@ def get_score(row):
     nome = row["NOME_MATCH"]
     if nome in consultores_dict:
         return consultores_dict[nome]["PONTUACAO"]
-    return 0  
+    return 0
 
 merge_cpf["PONTUACAO"] = merge_cpf.apply(get_score, axis=1)
 
 # ---------------------------
-# 5. Resultado FINAL
+# 6. Resultado final
 # ---------------------------
-historico = merge_cpf[[
-    "CPF",
-    "NOME",
-    "PONTUACAO"
-]]
+historico = merge_cpf[["CPF", "NOME", "PONTUAÇÃO"]]
 
-historico.to_excel("historico_final.xlsx", index=False)
+output_file = "historico_final.xlsx"
+historico.to_excel(output_file, index=False)
 
 print("\nProcessamento finalizado!")
-print("Arquivo gerado: historico_final.xlsx")
+print("Arquivo gerado:", output_file)
