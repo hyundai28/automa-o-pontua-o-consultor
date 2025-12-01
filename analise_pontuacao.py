@@ -23,23 +23,32 @@ print("Lendo planilhas...")
 df_cad = pd.read_excel(CAD_FILE)
 df_pont = pd.read_excel(PONT_FILE)
 
-print(f"Cadastros: {len(df_cad)} linhas")
+print(f"Cadastros bruto: {len(df_cad)} linhas")
 print(f"Pontuação: {len(df_pont)} linhas")
 
-# COLUNAS CERTAS
+# FILTRA SÓ QUEM TEM "Cadastro Concluído"
+df_cad = df_cad[df_cad["Status"].str.strip() == "Cadastro Concluído"].copy()
+print(f"Após filtro 'Cadastro Concluído': {len(df_cad)} linhas")
+
+# Se ninguém passou no filtro, para tudo
+if df_cad.empty:
+    print("Nenhum consultor com 'Cadastro Concluído' encontrado. Parando.")
+    exit()
+
+# Normalização
 df_cad["CPF_clean"] = df_cad["CPF"].apply(clean_cpf)
 df_cad["Nome_clean"] = df_cad["Nome"].apply(normalize_name)
 df_cad["Concessionaria_clean"] = df_cad["Concessionária"].astype(str).str.upper()
 
 df_pont["CPF_clean"] = df_pont["CPF"].apply(clean_cpf)
 df_pont["Nome_clean"] = df_pont["Nome"].apply(normalize_name)
-df_pont["Concessionária"] = df_pont["Concessionária"].astype(str).str.upper()
+df_pont["Concessionaria_clean"] = df_pont["Concessionária"].astype(str).str.upper()
 
-# Índices
+# Índices de busca
 pontuacao_por_cpf = pd.Series(df_pont["Amostra"].values, index=df_pont["CPF_clean"]).to_dict()
 hgsi_por_cpf = pd.Series(df_pont["HGSI"].values, index=df_pont["CPF_clean"]).to_dict()
 
-df_pont["Chave"] = df_pont["Nome_clean"] + " | " + df_pont["Concessionária"]
+df_pont["Chave"] = df_pont["Nome_clean"] + " | " + df_pont["Concessionaria_clean"]
 pontuacao_por_chave = pd.Series(df_pont["Amostra"].values, index=df_pont["Chave"]).to_dict()
 hgsi_por_chave = pd.Series(df_pont["HGSI"].values, index=df_pont["Chave"]).to_dict()
 
@@ -47,8 +56,9 @@ resultados = []
 
 for _, row in df_cad.iterrows():
     cpf = row["CPF_clean"]
+    cpf = row["CPF_clean"]
     nome = row["Nome_clean"]
-    conc = row["Concessionária"]
+    conc = row["Concessionaria_clean"]
     chave = f"{nome} | {conc}"
 
     amostra = 0
@@ -90,7 +100,7 @@ arquivo = OUTPUT_DIR / f"RESULTADO_{timestamp}.xlsx"
 with pd.ExcelWriter(arquivo, engine="openpyxl") as writer:
     df_final.to_excel(writer, sheet_name="Resultado", index=False)
     resumo = pd.DataFrame({
-        "Indicador": ["Total", "Pontuaram", "Não pontuaram", "% pontuaram"],
+        "Indicador": ["Total (Cadastro Concluído)", "Pontuaram", "Não pontuaram", "% pontuaram"],
         "Valor": [
             len(df_final),
             (df_final["Amostra"] > 0).sum(),
@@ -100,5 +110,5 @@ with pd.ExcelWriter(arquivo, engine="openpyxl") as writer:
     })
     resumo.to_excel(writer, sheet_name="Resumo", index=False)
 
-print(f"\nSUCESSO TOTAL: {arquivo}")
-print(f"{len(df_final)} consultores → {(df_final['Amostra']>0).sum()} pontuaram")
+print(f"\nPRONTO, PORRA! Gerado: {arquivo}")
+print(f"Total analisado (Cadastro Concluído): {len(df_final)} → {(df_final['Amostra']>0).sum()} pontuaram")
