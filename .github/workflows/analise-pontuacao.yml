@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       planilha_cadastros:
-        description: 'Planilha de CADASTROS (todos os consultores do site)'
+        description: 'Planilha de CADASTROS (todos os consultores)'
         required: true
-        type: string
+        type: attachment
       planilha_pontuacao:
-        description: 'Planilha de PONTUAÇÃO do mês (quem pontuou)'
+        description: 'Planilha de PONTUAÇÃO do mês'
         required: true
-        type: string
+        type: attachment
 
 jobs:
   analisar:
@@ -29,20 +29,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas openpyxl rapidfuzz unidecode
 
-      - name: Baixar planilhas
+      - name: Copiar planilhas enviadas
         run: |
           mkdir -p inputs/cadastros inputs/pontuacao outputs
-          gh run download ${{ github.run_id }} -n ${{ inputs.planilha_cadastros }} -D inputs/cadastros
-          gh run download ${{ github.run_id }} -n ${{ inputs.planilha_pontuacao }} -D inputs/pontuacao
-        env:
-          GH_TOKEN: ${{ github.token }}
+          cp "${{ inputs.planilha_cadastros }}" inputs/cadastros/
+          cp "${{ inputs.planilha_pontuacao }}" inputs/pontuacao/
+          
+          echo "Arquivos na pasta:"
+          ls -la inputs/cadastros/
+          ls -la inputs/pontuacao/
 
       - name: Executar análise
-        id: analise
         run: python analise_pontuacao.py
 
       - name: Upload resultado
         uses: actions/upload-artifact@v4
         with:
           name: resultado-pontuacao
-          path: outputs/resultado_*.csv
+          path: outputs/resultado_*.xlsx
