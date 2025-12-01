@@ -123,6 +123,7 @@ def main():
         cpf_col_cons = find_col(df_cons, ["CPF"])
         nome_col_cons = find_col(df_cons, ["Nome"])
         amostra_col = find_col(df_cons, ["Amostra"])
+        dealerName_col = find_col(df_cons, ["Concessionária"])
 
         cpf_col_cad = find_col(df_cad, ["CPF"])
         nome_col_cad = find_col(df_cad, ["Nome"])
@@ -222,7 +223,7 @@ def main():
         df_hist_existing = load_history_safe(HIST)
 
         df_hist_new = pd.DataFrame({
-            "Dealer": df_cons[nome_col_cons],  # Nome original da planilha (que era a concessionária)
+            "Dealer": df_cons[dealerName_col],  # Nome original da planilha (que era a concessionária)
             "Nome Consultor": df_cons[nome_col_cons],  # Mesmo nome; ajustar se vier outra coluna no futuro
             "CPF": df_cons["__CPF"],
             "Amostra": df_cons["__AMOSTRA"],
