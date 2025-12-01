@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       planilha_cadastros:
-        description: 'Planilha de CADASTROS (todos os consultores)'
+        description: 'Planilha com TODOS os cadastros do site'
         required: true
         type: attachment
       planilha_pontuacao:
-        description: 'Planilha de PONTUAÇÃO do mês'
+        description: 'Planilha com a pontuação do mês (quem pontuou)'
         required: true
         type: attachment
 
@@ -16,10 +16,10 @@ jobs:
   analisar:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout do repositório
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -34,16 +34,23 @@ jobs:
           mkdir -p inputs/cadastros inputs/pontuacao outputs
           cp "${{ inputs.planilha_cadastros }}" inputs/cadastros/
           cp "${{ inputs.planilha_pontuacao }}" inputs/pontuacao/
-          
-          echo "Arquivos na pasta:"
+          echo "Arquivos copiados com sucesso:"
           ls -la inputs/cadastros/
           ls -la inputs/pontuacao/
 
       - name: Executar análise
         run: python analise_pontuacao.py
 
-      - name: Upload resultado
+      - name: Upload do resultado
         uses: actions/upload-artifact@v4
         with:
-          name: resultado-pontuacao
-          path: outputs/resultado_*.xlsx
+          name: Resultado - Pontuação Consultores
+          path: outputs/resultado_pontuacao_*.xlsx
+
+      - name: Resumo final (para ficar bonito no log)
+        run: |
+          echo "✅ Análise concluída com sucesso!"
+          echo "📊 Total de consultores cadastrados: $(cat outputs/last_summary.txt | grep 'Total' | cut -d: -f2)"
+          echo "🏆 Pontuaram: $(cat outputs/last_summary.txt | grep 'Pontuaram' | cut -d: -f2)"
+          echo "❌ Não pontuaram: $(cat outputs/last_summary.txt | grep 'Não pontuaram' | cut -d: -f2)"
+          echo "📎 Baixe o arquivo Excel logo acima em 'Artifacts' ↓"
