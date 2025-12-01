@@ -134,7 +134,7 @@ def main():
         
         cpf_pont_col = detect_column(df_pont, ["cpf", "CPF"], "CPF (pontuação)")
         nome_pont_col = detect_column(df_pont, ["nome", "consultor", "funcionario"], "Nome (pontuação)")
-        pont_col = detect_column(df_pont, ["pont", "score", "total", "resultado", "pontuação", "Amostra"], "Pontuação")
+        pont_col = detect_column(df_pont, ["pont", "score", "total", "resultado", "pontuação", "amostra", "pesquisas", "qtd", "quantidade", "volume"], "Pontuação") or "Amostra"  # forçar fallback pra coluna Amostra
         
         if not pont_col:
             print("❌ ERRO: Não foi possível identificar coluna de pontuação!")
