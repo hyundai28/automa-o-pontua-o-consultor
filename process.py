@@ -24,7 +24,7 @@ os.makedirs(OUTPUT, exist_ok=True)
 # Função: Buscar cadastro por CPF ou Nome (score 100)
 # ----------------------------------------------------------
 def buscar_cadastro(consultor, df_cadastros):
-    nome_consultor = str(consultor["Nome Consultor"]).strip().lower()
+    nome_consultor = str(consultor["Nome"]).strip().lower()
     cpf_consultor = str(consultor["CPF"]).zfill(11)
 
     # 1) Match direto por CPF
