@@ -27,7 +27,7 @@ print(f"Pontuação: {len(df_pont)} linhas")
 
 # Forçando as colunas exatas que você me passou
 df_cad["CPF_clean"] = df_cad["CPF"].apply(clean_cpf)
-df_cad["Nome_clean"] = df_cad["Consultor Regional"].apply(normalize_name)
+df_cad["Nome_clean"] = df_cad["Nome"].apply(normalize_name)
 
 df_pont["CPF_clean"] = df_pont["CPF"].apply(clean_cpf)
 df_pont["Nome_clean"] = df_pont["Nome"].apply(normalize_name)
