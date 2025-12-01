@@ -33,7 +33,7 @@ df_cad["Concessionaria_clean"] = df_cad["Concessionária"].astype(str).str.upper
 
 df_pont["CPF_clean"] = df_pont["CPF"].apply(clean_cpf)
 df_pont["Nome_clean"] = df_pont["Nome"].apply(normalize_name)
-df_pont["Concessionaria"] = df_pont["Concessionária"].astype(str).str.upper()
+df_pont["Concessionária"] = df_pont["Concessionária"].astype(str).str.upper()
 
 # Índices
 pontuacao_por_cpf = pd.Series(df_pont["Amostra"].values, index=df_pont["CPF_clean"]).to_dict()
