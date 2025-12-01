@@ -1,40 +1,27 @@
-name: 🎯 Análise de Pontuação - Consultores
+name: 🎯 Análise Pontuação Consultores
 
-on:
-  workflow_dispatch:
-    # Sem nenhum input! Você não precisa digitar NADA mais
-    # O workflow já sabe onde estão seus arquivos
+on: 
+  workflow_dispatch:   # só clicar no botão e rodar
 
 jobs:
-  analisar:
+  rodar:
     runs-on: ubuntu-latest
     steps:
-      - name: 📂 Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 🐍 Setup Python
+      - name: Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: 📦 Instalar dependências
-        run: |
-          python -m pip install --upgrade pip
-          pip install pandas openpyxl rapidfuzz unidecode
+      - name: Instalar libs (com xlrd pra .xls)
+        run: pip install pandas openpyxl rapidfuzz unidecode xlrd
 
-      - name: 🔍 Executar análise (arquivos já na pasta certa!)
+      - name: RODAR A PORRA DA ANÁLISE
         run: python analise_pontuacao.py
 
-      - name: 📤 Upload resultado
+      - name: Subir resultado
         uses: actions/upload-artifact@v4
         with:
-          name: 🎯 RESULTADO - ${{ github.run_number }}
-          path: outputs/resultado_*.xlsx
-          retention-days: 30
-
-      - name: ✅ Pronto!
-        run: |
-          echo ""
-          echo "PRONTO, PORRA! TUDO DEU CERTO!"
-          echo "Baixe o Excel aí em cima nos Artifacts"
-          echo "Abra a aba 'Resumo' pra ver quantos pontuaram"
+          name: RESULTADO-PONTUACAO
+          path: outputs/*.xlsx
