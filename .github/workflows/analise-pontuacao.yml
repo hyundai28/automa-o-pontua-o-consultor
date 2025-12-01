@@ -2,17 +2,8 @@ name: 🎯 Análise de Pontuação - Consultores
 
 on:
   workflow_dispatch:
-    inputs:
-      nome_arquivo_cadastros:
-        description: 'Nome do arquivo de CADASTROS que você commitou (ex: cadastros.xlsx)'
-        required: true
-        type: string
-        default: 'cadastros.xlsx'
-      nome_arquivo_pontuacao:
-        description: 'Nome do arquivo de PONTUAÇÃO que você commitou (ex: pontuacao.xlsx)'
-        required: true
-        type: string
-        default: 'pontuacao.xlsx'
+    # Sem nenhum input! Você não precisa digitar NADA mais
+    # O workflow já sabe onde estão seus arquivos
 
 jobs:
   analisar:
@@ -21,7 +12,7 @@ jobs:
       - name: 📂 Checkout
         uses: actions/checkout@v4
 
-      - name: 🐍 Setup Python 3.11
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -31,32 +22,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas openpyxl rapidfuzz unidecode
 
-      - name: 📥 Preparar arquivos do repositório
-        run: |
-          mkdir -p inputs/{cadastros,pontuacao,outputs}
-          
-          # Copia os arquivos da raiz do repo pras pastas
-          cp "${{ inputs.nome_arquivo_cadastros }}" inputs/cadastros/ || { echo "ERRO: Arquivo '${{ inputs.nome_arquivo_cadastros }}' não encontrado!"; exit 1; }
-          cp "${{ inputs.nome_arquivo_pontuacao }}" inputs/pontuacao/ || { echo "ERRO: Arquivo '${{ inputs.nome_arquivo_pontuacao }}' não encontrado!"; exit 1; }
-          
-          echo "📁 Arquivos encontrados:"
-          ls -la inputs/cadastros/
-          ls -la inputs/pontuacao/
-
-      - name: 🔍 Executar análise
+      - name: 🔍 Executar análise (arquivos já na pasta certa!)
         run: python analise_pontuacao.py
 
       - name: 📤 Upload resultado
         uses: actions/upload-artifact@v4
         with:
-          name: 🎯-resultado-pontuacao-${{ github.run_number }}
+          name: 🎯 RESULTADO - ${{ github.run_number }}
           path: outputs/resultado_*.xlsx
           retention-days: 30
 
-      - name: 🧹 Limpar arquivos (opcional)
-        if: always()
+      - name: ✅ Pronto!
         run: |
-          # Remove os arquivos originais pra não poluir o repo (você pode comentar essa linha se quiser manter)
-          rm -f "${{ inputs.nome_arquivo_cadastros }}" "${{ inputs.nome_arquivo_pontuacao }}"
-          git add . && git commit -m "Limpeza: removidos arquivos temporários da análise" || true
-          git push || true
+          echo ""
+          echo "PRONTO, PORRA! TUDO DEU CERTO!"
+          echo "Baixe o Excel aí em cima nos Artifacts"
+          echo "Abra a aba 'Resumo' pra ver quantos pontuaram"
