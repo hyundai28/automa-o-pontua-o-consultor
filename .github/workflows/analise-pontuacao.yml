@@ -1,95 +1,61 @@
-# .github/workflows/analise-pontuacao.yml
-name: Análise de Pontuação - Consultores
+name: 🎯 Análise de Pontuação - Consultores
 
 on:
   workflow_dispatch:
     inputs:
-      # Esses dois campos são só para o GitHub mostrar o botão "Choose file"
-      upload_cadastros:
-        description: 'Planilha de CADASTROS (todos os consultores do site)'
-        required: true
-        type: attachment
-      
-      upload_pontuacao:
-        description: 'Planilha de PONTUAÇÃO do mês (quem pontuou)'
-        required: true
-        type: attachment
-
-      # Esses dois são opcionais — servem como fallback se o attachment não aparecer
       planilha_cadastros:
-        description: '(Alternativo) Cole aqui o caminho da planilha de cadastros'
-        required: false
+        description: '📋 Arraste ou selecione a planilha de CADASTROS (todos os consultores do site)'
+        required: true
         type: string
-        default: "não usado"
-      
       planilha_pontuacao:
-        description: '(Alternativo) Cole aqui o caminho da planilha de pontuação'
-        required: false
+        description: '🏆 Arraste ou selecione a planilha de PONTUAÇÃO do mês (quem pontuou)'
+        required: true
         type: string
-        default: "não usado"
 
 jobs:
   analisar:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout do repositório
+      - name: 📂 Checkout
         uses: actions/checkout@v4
 
-      - name: Configurar Python 3.11
+      - name: 🐍 Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Instalar dependências
+      - name: 📦 Instalar dependências
         run: |
           python -m pip install --upgrade pip
-          pip install pandas openpyxl rapidfuzz unidecode --quiet
+          pip install pandas openpyxl rapidfuzz unidecode
 
-      - name: Preparar e copiar planilhas (funciona com attachment OU caminho)
+      - name: 📥 Copiar planilhas enviadas
         run: |
-          mkdir -p inputs/cadastros inputs/pontuacao outputs
+          mkdir -p inputs/{cadastros,pontuacao,outputs}
           
-          # Prioridade 1: attachment (botão de upload)
-          if [ -f "${{ inputs.upload_cadastros }}" ]; then
-            cp "${{ inputs.upload_cadastros }}" inputs/cadastros/
-            echo "Planilha de cadastros recebida via upload"
-          elif [ "${{ inputs.planilha_cadastros }}" != "não usado" ] && [ -f "${{ inputs.planilha_cadastros }}" ]; then
-            cp "${{ inputs.planilha_cadastros }}" inputs/cadastros/
-            echo "Planilha de cadastros recebida via caminho"
-          else
-            echo "ERRO: Planilha de CADASTROS não encontrada!"
-            exit 1
-          fi
+          # Copia direto do input (GitHub converte arquivo em caminho)
+          cp "${{ inputs.planilha_cadastros }}" inputs/cadastros/
+          cp "${{ inputs.planilha_pontuacao }}" inputs/pontuacao/
           
-          if [ -f "${{ inputs.upload_pontuacao }}" ]; then
-            cp "${{ inputs.upload_pontuacao }}" inputs/pontuacao/
-            echo "Planilha de pontuação recebida via upload"
-          elif [ "${{ inputs.planilha_pontuacao }}" != "não usado" ] && [ -f "${{ inputs.planilha_pontuacao }}" ]; then
-            cp "${{ inputs.planilha_pontuacao }}" inputs/pontuacao/
-            echo "Planilha de pontuação recebida via caminho"
-          else
-            echo "ERRO: Planilha de PONTUAÇÃO não encontrada!"
-            exit 1
-          fi
-          
-          echo ""
-          echo "Arquivos recebidos:"
+          echo "📁 Arquivos copiados:"
+          echo "Cadastros:"
           ls -la inputs/cadastros/
+          echo "Pontuação:"
           ls -la inputs/pontuacao/
 
-      - name: Executar análise de pontuação
+      - name: 🔍 Executar análise
         run: python analise_pontuacao.py
 
-      - name: Upload do resultado final
+      - name: 📤 Upload resultado
         uses: actions/upload-artifact@v4
         with:
-          name: resultado-pontuacao-${{ github.run_number }}
-          path: outputs/resultado_pontuacao_*.xlsx
+          name: 🎯-resultado-pontuacao-${{ github.run_number }}
+          path: outputs/resultado_*.xlsx
           retention-days: 30
 
-      - name: Resumo final
+      - name: 📊 Resumo final
+        if: always()
         run: |
           echo ""
-          echo "ANÁLISE CONCLUÍDA COM SUCESSO!"
-          echo "Baixe o arquivo Excel nos Artifacts acima"
-          echo "Abra a aba 'Resumo' para ver as estatísticas rápidas"
+          echo "✅ Análise pronta! Baixe o Excel nos Artifacts acima."
+          echo "Abra a aba 'Resumo' pra ver % de quem pontuou e médias."
