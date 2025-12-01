@@ -17,7 +17,7 @@ from unidecode import unidecode
 # Configuração de pastas
 ROOT = Path(".")
 INPUTS_CAD = ROOT / "inputs" / "cadastros"
-INPUTS_PONT = ROOT / "inputs" / "pontuacao"
+INPUTS_PONT = ROOT / "inputs" / "consultores"
 OUTPUTS = ROOT / "outputs"
 OUTPUTS.mkdir(parents=True, exist_ok=True)
 
