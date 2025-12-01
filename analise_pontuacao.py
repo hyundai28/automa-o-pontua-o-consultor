@@ -51,7 +51,7 @@ for _, row in df_cad.iterrows():
     
     resultados.append({
         "Concessionária": row["Concessionária"],
-        "Consultor Regional": row["Consultor Regional"],
+        "Consultor": row["Nome"],
         "CPF": row["CPF"],
         "Pontuação (Amostra)": int(pontos) if pd.notna(pontos) else 0,
         "Status": "PONTUOU" if (pd.notna(pontos) and pontos > 0) else "NÃO PONTUOU"
