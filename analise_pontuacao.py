@@ -44,7 +44,7 @@ df_pont["Nome_clean"] = df_pont["Nome"].apply(normalize_name)
 df_pont["Concessionaria_clean"] = df_pont["Concessionária"].astype(str).str.upper()
 
 # Coluna exata que você quer: Q.1.4\nRecomendação\nConsultor
-nota_col = "Q.1.4\nRecomendação\nConsultor"
+nota_col = "Q.1.4 Recomendação Consultor"
 
 # Índices de busca (prioridade CPF → Nome + Loja → Nome)
 amostra_por_cpf = pd.Series(df_pont["Amostra"].values, index=df_pont["CPF_clean"]).to_dict()
